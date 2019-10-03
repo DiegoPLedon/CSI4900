@@ -32,7 +32,7 @@ class StdOutListener(StreamListener):
     """
 
     def __init__(self, fetched_tweets):
-        self.fetched_tweets_filename = fetched_tweets
+        self.fetched_tweets = fetched_tweets
 
     def on_data(self, data):
         try:
@@ -51,7 +51,7 @@ class StdOutListener(StreamListener):
 if __name__ == '__main__':
     # Authenticate using config.py and connect to Twitter Streaming API.
     hash_tag_list = ["diego", "politics", "Justyn Trudeau"]
-    fetched_tweets_filename = "tweets.json"
+    fetched_tweets = "tweets.json"
 
     twitter_streamer = TwitterStreamer()
-    twitter_streamer.stream_tweets(fetched_tweets_filename, hash_tag_list)
+    twitter_streamer.stream_tweets(fetched_tweets, hash_tag_list)
