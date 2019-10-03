@@ -1,34 +1,57 @@
 from tweepy.streaming import StreamListener
 from tweepy import OAuthHandler
 from tweepy import Stream
-from kafka import SimpleProducer, KafkaClient
 
 import twitter_credentials
 
-class StdOutListener(StreamListener):
-#Override methods from StreamListener
 
-	#takes in data streamed in from StreamListener
+#Twitter Stream
+class TwitterStreamer():
+    """
+    Class for streaming and processing live tweets.
+    """
+
+    def __init__(self):
+        pass
+
+    def stream_tweets(self, fetched_tweets, hash_tag_list):
+        # This handles Twitter authetification and the connection to Twitter Streaming API
+        listener = StdOutListener(fetched_tweets)
+        auth = OAuthHandler(twitter_credentials.CONSUMER_KEY, twitter_credentials.CONSUMER_KEY_SECRET)
+        auth.set_access_token(twitter_credentials.ACCESS_TOKEN, twitter_credentials.ACCESS_TOKEN_SECRET)
+        stream = Stream(auth, listener)
+
+        # This line filter Twitter Streams to capture data by the keywords:
+        stream.filter(track=hash_tag_list)
+
+
+#Stream Listener
+class StdOutListener(StreamListener):
+    """
+    Basic listener that prints out tweet data
+    """
+
+    def __init__(self, fetched_tweets):
+        self.fetched_tweets_filename = fetched_tweets
+
     def on_data(self, data):
-        print (data)
+        try:
+            print(data)
+            with open(self.fetched_tweets, 'a') as tf:
+                tf.write(data)
+            return True
+        except BaseException as e:
+            print("Error on_data %s" % str(e))
         return True
-	#prints out error that occurs
+
     def on_error(self, status):
-        print (status)
-		
-if __name__ == "__main__":
-	#Object of inherited class
-	listener = StdOutListener()
-	
-	#kafka = KafkaClient("localhost:9092")
-	#producer = SimpleProducer(kafka)
-	
-	#Add keys in twitter_credentials.py
-	auth = OAuthHandler(twitter_credentials.CONSUMER_KEY, twitter_credentials.CONSUMER_KEY_SECRET)
-	auth.set_access_token(twitter_credentials.ACCESS_TOKEN, twitter_credentials.ACCESS_TOKEN_SECRET)
-	
-	stream = Stream(auth, listener)
-	
-	#Filtering tweets
-	stream.filter(track=['Diego'])
-	
+        print(status)
+
+
+if __name__ == '__main__':
+    # Authenticate using config.py and connect to Twitter Streaming API.
+    hash_tag_list = ["diego", "politics", "Justyn Trudeau"]
+    fetched_tweets_filename = "tweets.json"
+
+    twitter_streamer = TwitterStreamer()
+    twitter_streamer.stream_tweets(fetched_tweets_filename, hash_tag_list)
