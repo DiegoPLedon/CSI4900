@@ -48,8 +48,13 @@ class StdOutListener(StreamListener):
 
 
 if __name__ == '__main__':
-    hash_tag_list = ["ottawa"]
+    #hash_tag_list = ["ottawa", "Canada"]
     fetched_tweets_file = "tweets.json"
+
+    input_string = input("Enter the tweet keywords to search by:\n")
+    hash_tag_list = input_string.replace(" ", " ").split(",")
+    print(hash_tag_list)
+
 
     kafka = KafkaClient("localhost:9092")
     producer = SimpleProducer(kafka)
