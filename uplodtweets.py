@@ -1,55 +1,39 @@
-import os
-import sys
-import time
-import requests
+
+import json
 from py2neo import Graph, Node, Relationship
 
-graph = Graph()
+# B
+from kafka import KafkaConsumer
+
+graph = Graph("bolt://neo4j:1234@localhost:7687/db/data/")
 
 graph.run("CREATE CONSTRAINT ON (u:User) ASSERT u.username IS UNIQUE")
 graph.run("CREATE CONSTRAINT ON (t:Tweet) ASSERT t.id IS UNIQUE")
 graph.run("CREATE CONSTRAINT ON (h:Hashtag) ASSERT h.name IS UNIQUE")
 
-def upload_tweets(tweets):
-    for t in tweets:
-        u = t["user"]
-        e = t["entities"]
 
-        tweet = Node("Tweet", id=t["id"])
-        graph.merge(tweet)
-        tweet["text"] = t["text"]
-        tweet.push()
+def add_user(user):
+    temp = Node("User", id=user["id"], name=user["name"], username=user["screen_name"].lower())
+    graph.create(temp)
 
-        user = Node("user", username=u["screen_name"])
-        graph.merge(user)
 
-        graph.merge(Relationship(user, "POSTS", tweet))
-#Nodes
-        for h in e.get("hashtags", []):
-            hashtag = Node("Hashtag", name=h["text"].lower())
-            graph.merge(hashtag)
-            graph.merge(Relationship(hashtag, "TAGS", tweet))
+def relate(user1, type, user2):
+    user_node_1 = graph.nodes.match("User", username=user1.lower()).first()
+    user_node_2 = graph.nodes.match("User", username=user2['screen_name'].lower()).first()
+    if (not user_node_2):
+        temp = Node("User", id=user2["id"], name=user2["name"], username=user2["screen_name"].lower())
+    else:
+        temp = user_node_2
+    print("Connection", user1, user2['screen_name'])
+    graph.create(Relationship(user_node_1, type, temp))
 
-        for m in e.get('user_mentions', []):
-            mention = Node("User", username=m["screen_name"])
-            graph.merge(mention)
-            graph.merge(Relationship(tweet, "MENTIONS", mention))
 
-        for r in e.get('in_reply_to_user_id', []):
-            mention = Node("User", username=r["in_reply_to_user_id_str"])
-            graph.merge(mention)
-            graph.merge(Relationship(tweet, "REPLY", mention))
-
-        reply = t.get("in_reply_to_status_id")
-
-        if reply:
-            reply_tweet = Node("Tweet", id=reply)
-            graph.merge(reply_tweet)
-            graph.merge(Relationship(tweet, "REPLY_TO", reply_tweet))
-
-        ret = t.get("retweeted_status", {}).get("id")
-
-        if ret:
-            retweet = Node("Tweet", id=ret)
-            graph.merge(retweet)
-            graph.merge(Relationship(tweet, "RETWEETS", retweet))
+consumer = KafkaConsumer('Ottawa')
+for msg in consumer:
+    msg_deserialized = json.loads(msg.value)
+    m = graph.nodes.match("User", username=msg_deserialized['user']['screen_name'].lower()).first()
+    if (not m):
+        add_user(msg_deserialized['user'])
+    if ('quoted_status' in msg_deserialized and 'extended_tweet' in msg_deserialized['quoted_status']):
+        for mention in msg_deserialized['quoted_status']['extended_tweet']['entities']['user_mentions']:
+            relate(msg_deserialized['user']['screen_name'], "MENTIONS", mention)
