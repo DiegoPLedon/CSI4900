@@ -5,22 +5,6 @@ from kafka import SimpleProducer, KafkaClient
 
 import twitter_credentials
 
-"""
-#Twitter Stream
-class TwitterStreamer():
-    Class for streaming and processing live tweets
-    
-
-    def __init__(self):
-        pass
-
-    def stream_tweets(self, fetched_tweets_file, hash_tag_list):
-
-
-        # This line filter Twitter Streams to capture data by the keywords:
-        stream.filter(track=hash_tag_list)
-"""
-
 #Stream Listener
 class StdOutListener(StreamListener):
     """
@@ -36,8 +20,6 @@ class StdOutListener(StreamListener):
         producer.send_messages("Ottawa", data.encode('utf-8'))
         try:
             print(data)
-            with open(self.fetched_tweets_file, 'a') as tf:
-                tf.write(data)
             return True
         except BaseException as e:
             print("Error on_data %s" % str(e))
@@ -52,7 +34,7 @@ if __name__ == '__main__':
     fetched_tweets_file = "tweets.json"
 
     input_string = input("Enter the tweet keywords to search by:\n")
-    hash_tag_list = input_string.replace(" ", " ").split(",")
+    hash_tag_list = input_string.strip().split(",")
     print(hash_tag_list)
 
 

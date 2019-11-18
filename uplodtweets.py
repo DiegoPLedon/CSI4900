@@ -5,7 +5,7 @@ from py2neo import Graph, Node, Relationship
 # B
 from kafka import KafkaConsumer
 
-graph = Graph("bolt://neo4j:1234@localhost:7687/db/data/")
+graph = Graph("")
 
 graph.run("CREATE CONSTRAINT ON (u:User) ASSERT u.username IS UNIQUE")
 graph.run("CREATE CONSTRAINT ON (t:Tweet) ASSERT t.id IS UNIQUE")
@@ -31,9 +31,15 @@ def relate(user1, type, user2):
 consumer = KafkaConsumer('Ottawa')
 for msg in consumer:
     msg_deserialized = json.loads(msg.value)
-    m = graph.nodes.match("User", username=msg_deserialized['user']['screen_name'].lower()).first()
+    try:
+        m = graph.nodes.match("User", username=msg_deserialized['user']['screen_name'].lower()).first()
+    except:
+        print("Rate limit hit, waiting...")
+        continue
     if (not m):
         add_user(msg_deserialized['user'])
+    for mention in msg_deserialized['entities']['user_mentions']:
+        relate(msg_deserialized['user']['screen_name'], "MENTIONS", mention)
     if ('quoted_status' in msg_deserialized and 'extended_tweet' in msg_deserialized['quoted_status']):
         for mention in msg_deserialized['quoted_status']['extended_tweet']['entities']['user_mentions']:
             relate(msg_deserialized['user']['screen_name'], "MENTIONS", mention)
